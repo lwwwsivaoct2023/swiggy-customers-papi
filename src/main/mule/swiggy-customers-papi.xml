@@ -3,7 +3,7 @@
     <http:listener-config name="swiggy-customers-papi-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="8081" />
     </http:listener-config>
-    <apikit:config name="swiggy-customers-papi-config" api="resource::d0205d5f-f064-4d78-b0f0-1e4d55cdf281:swiggy-customers-papi:1.0.0:raml:zip:swiggy-customers-papi.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <apikit:config name="swiggy-customers-papi-config" api="resource::d0205d5f-f064-4d78-b0f0-1e4d55cdf281:swiggy-customers-papi:1.0.1:raml:zip:swiggy-customers-papi.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <flow name="swiggy-customers-papi-main">
         <http:listener config-ref="swiggy-customers-papi-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
@@ -124,15 +124,32 @@ output application/json
         </error-handler>
     </flow>
     <flow name="get:\customers:swiggy-customers-papi-config">
-        <ee:transform doc:name="Transform Message">
+        <flow-ref doc:name="getallcustomersfromcustomerssapi" doc:id="22ec7d8e-1448-49fe-9675-0f872e8797ea" name="getallcustomersfromcustomerssapi" />
+        <ee:transform doc:name="Transform Message" doc:id="437faf44-a70c-4d53-984f-ddea83100e18">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
+
+
+
+fun mapcustomer(customer) ={
+	
+  customerId: customer.customerId,
+  fullName: customer.firstName as String ++ customer.lastName as String,
+  email: customer.email,
+  phone: customer.phone,
+  (addresses: getAddresses(customer.addresses )) if customer.addresses?
+  
+  }
+
+fun getAddresses(addresses) = addresses map (address) ->
+    address.houseNumber ++","++ address.street ++","++
+    address.city++ ","++ address.pincode
+
+
+
 ---
-{
-  status: "500",
-  message: "There was some server side problem. Please try later"
-}]]></ee:set-payload>
+payload map (item) -> mapcustomer(item)]]></ee:set-payload>
             </ee:message>
         </ee:transform>
     </flow>
@@ -142,17 +159,7 @@ output application/json
                 <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
             </ee:variables>
         </ee:transform>
-        <ee:transform doc:name="Transform Message">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-  status: "500",
-  message: "There was some server side problem. Please try later"
-}]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+        <flow-ref doc:name="getOrdersOfCustomer" doc:id="fe51f45f-2d23-4eaf-89d5-1eb8762de4a1" name="getOrdersOfCustomer" />
     </flow>
     <flow name="get:\customers\(id):swiggy-customers-papi-config">
         <ee:transform doc:name="Transform Message">
@@ -160,41 +167,38 @@ output application/json
                 <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
             </ee:variables>
         </ee:transform>
-        <ee:transform doc:name="Transform Message">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
+        <flow-ref doc:name="getcustomerByIdFromCustomersSapi" doc:id="2e919721-8e9a-4f28-8024-19977b472624" name="getcustomerByIdFromCustomersSapi"/>
+		<ee:transform doc:name="Transform Message" doc:id="b5b630d1-1a8b-4c65-97f9-a52ac001a4b5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
+
+fun mapcustomer(customer) ={
+	
+  customerId: customer.customerId,
+  fullName: customer.firstName as String ++ customer.lastName as String,
+  email: customer.email,
+  phone: customer.phone,
+  (addresses: getAddresses(customer.addresses )) if customer.addresses?
+  
+  }
+
+fun getAddresses(addresses) = addresses map (address) ->
+    address.houseNumber ++","++ address.street ++","++
+    address.city++ ","++ address.pincode
+
 ---
-{
-  customerId: "100",
-  fullName: "SivaPrasad Valluru",
-  email: "sivaprasad.valluru@gmail.com",
-  phone: "8088910831",
-  addresses: [
-    "101,Samhitha Rainbow,vibgyor high school road,Bangalore,560066", 
-    "201,Samhitha Rainbow,vibgyor high school road,Bangalore,560066"
-  ]
-}]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+mapcustomer(payload) ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
     </flow>
-    <flow name="get:\customers\(id)\orders\(id):swiggy-customers-papi-config">
+    <flow name="get:\customers\(id)\orders\(orderId):swiggy-customers-papi-config">
         <ee:transform doc:name="Transform Message">
             <ee:variables>
                 <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
-                <ee:set-variable variableName="id">attributes.uriParams.'id'</ee:set-variable>
+                <ee:set-variable variableName="orderId">attributes.uriParams.'orderId'</ee:set-variable>
             </ee:variables>
         </ee:transform>
-        <ee:transform doc:name="Transform Message">
-            <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-  status: "500",
-  message: "There was some server side problem. Please try later"
-}]]></ee:set-payload>
-            </ee:message>
-        </ee:transform>
+        <flow-ref doc:name="getOrderByOrderId" doc:id="222fa615-6269-4044-946b-1920898294fb" name="getOrderByOrderId"/>
     </flow>
 </mule>

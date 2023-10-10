@@ -1,0 +1,7 @@
+%dw 2.0
+
+type auto_bf26393e_aa99_4887_a349_37b3c300f58c_Output_Payload = Array<{  restaurantAddress: String,   orderId: String,   deliveryAddress: String,   totalPrice: Number,   restaurantName: String,   orderStatus: String,   orderItems: Array<{    itemName: String,     quantity: Number,     price: Number,     _?: Any  }>, 
+  customerName: String, 
+  _?: Any
+}>
+

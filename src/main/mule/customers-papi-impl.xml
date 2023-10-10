@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+
+
+	<ee:object-store-caching-strategy name="customerstrategy" doc:name="Caching Strategy" doc:id="558bee0b-d74f-4266-acc3-90db034bacd1" >
+		<os:private-object-store maxEntries="100" entryTtl="60" />
+	</ee:object-store-caching-strategy>
+	<ee:object-store-caching-strategy name="restaurantstrategy" doc:name="Caching Strategy" doc:id="d5d32f3a-a775-473a-9117-c83559854a0a" keyGenerationExpression="#[payload]" >
+		<os:private-object-store maxEntries="100" entryTtl="60" />
+	</ee:object-store-caching-strategy>
+	<flow name="getmenuItemByMenuItemId" doc:id="47db1539-a1c2-4a6a-8ae2-a09a7ffbba2c" >
+		<http:request method="GET" doc:name="Request" doc:id="b1c9a03b-5a3e-4ef2-8256-5b644015280c" config-ref="RESTAURANTS_SAPI_HTTP_REQUEST" path="/restaurants/{id}/menus/{menuId}/menuItems/{menuItemId}">
+			<http:uri-params ><![CDATA[#[{
+	id: payload.restaurantId,
+	menuId: payload.menuId,
+	menuItemId: payload.menuItemId
+}]]]></http:uri-params>
+		</http:request>
+	</flow>
+	<flow name="getcustomerByIdFromCustomersSapi" doc:id="45f2f1c7-5ccf-4a90-98da-f196d66cdd83" >
+		<ee:cache doc:name="CustomerCache" doc:id="83b6ee16-7ff7-4e55-ad90-9ea10d299ab4" cachingStrategy-ref="customerstrategy">
+			<http:request method="GET" doc:name="Request" doc:id="4c0fc244-f755-4e41-b15a-b790bb6582fb" config-ref="CUSTOMER_SAPI_HTTP_REQUEST_CONFIGURATION" path="/customers/{id}">
+			<http:uri-params><![CDATA[#[{
+	id: if(vars.id?) vars.id else payload
+}]]]></http:uri-params>
+		</http:request>
+		</ee:cache>
+	</flow>
+	<flow name="getRestaurantsByIdFromRestaurantsSapi" doc:id="0c040532-6df5-48ed-8ae6-f3510e76e4e8" >
+		<ee:cache doc:name="RestaurantCache" doc:id="d30dc0c5-bc34-4b99-9164-4634f995a6f1" cachingStrategy-ref="restaurantstrategy">
+			<http:request method="GET" doc:name="Request" doc:id="b58c4885-938b-4784-9fbc-bf81f998c429" config-ref="RESTAURANTS_SAPI_HTTP_REQUEST" path="/restaurants/{id}">
+			<http:uri-params><![CDATA[#[{
+	id: payload
+}]]]></http:uri-params>
+		</http:request>
+		</ee:cache>
+	</flow>
+	<flow name="getallcustomersfromcustomerssapi" doc:id="c7d8ed23-0f2b-4135-83c5-0b0528e4da82" >
+		<http:request method="GET" doc:name="GetAllCustomersFromSapi" doc:id="fe61fac4-ab87-4545-82cc-dd7f4414d7cd" config-ref="CUSTOMER_SAPI_HTTP_REQUEST_CONFIGURATION" path="/customers" />
+	</flow>
+	<flow name="getOrdersOfCustomer" doc:id="bf26393e-aa99-4887-a349-37b3c300f58c" >
+		<http:request method="GET" doc:name="Request" doc:id="77fc0f24-b428-4193-91f2-a4c79cb78ffb" config-ref="ORDERS_SAPI_HTTP_REQUEST" path="/customers/{id}/orders">
+			<http:uri-params ><![CDATA[#[{
+	id: vars.id
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="02263b59-da19-4aad-9e1d-4823b8a3dc51" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+fun mapOrder(item) = {
+  orderId: item.orderId as String,
+  deliveryAddress: do {
+  	var customer = lookup('getcustomerByIdFromCustomersSapi',item.customerId,10000)
+  	---
+  	if(customer.addresses?) customer.addresses[0].houseNumber ++ ","++
+  							customer.addresses[0].street ++ ","++
+  							customer.addresses[0].city++ "," ++
+  							customer.addresses[0].pincode
+  	else ""
+  },
+  totalPrice: item.orderTotalPrice as Number,
+  orderStatus: item.orderStatus as String,
+  customerName: lookup('getcustomerByIdFromCustomersSapi',item.customerId,10000).firstName,
+  restaurantName: lookup('getRestaurantsByIdFromRestaurantsSapi',item.restaurantId,10000).name,
+  restaurantAddress: do {
+  	var restaurant = lookup('getRestaurantsByIdFromRestaurantsSapi',item.restaurantId,10000)
+  	---
+  	restaurant.address.houseNumber ++ "," ++
+  	restaurant.address.street ++ "," ++
+  	restaurant.address.city ++ ","++ restaurant.address.pincode
+  	
+  },
+  orderItems: item.orderItems map (orderItem)->{
+  	  "itemName": lookup("getmenuItemByMenuItemId",orderItem,10000).itemName,
+      "quantity": orderItem.quantity,
+      "price": orderItem.orderItemPrice
+  }
+	
+}
+
+
+
+---
+payload map (item)-> mapOrder(item)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getOrderByOrderId" doc:id="b723e303-9d7a-4446-997d-1dbddd3cf933" >
+		<http:request method="GET" doc:name="Request" doc:id="869d43b9-355a-48bf-9957-79502896c9e5" config-ref="ORDERS_SAPI_HTTP_REQUEST" path="/orders/{orderId}">
+			<http:uri-params ><![CDATA[#[{
+	orderId: vars.orderId
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="31fbe1b3-f42b-4fb6-a1dc-550803cd56d8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+
+fun mapOrder(item) = {
+  orderId: item.orderId as String,
+  deliveryAddress: do {
+  	var customer = lookup('getcustomerByIdFromCustomersSapi',item.customerId,10000)
+  	---
+  	if(customer.addresses?) customer.addresses[0].houseNumber ++ ","++
+  							customer.addresses[0].street ++ ","++
+  							customer.addresses[0].city++ "," ++
+  							customer.addresses[0].pincode
+  	else ""
+  },
+  totalPrice: item.orderTotalPrice as Number,
+  orderStatus: item.orderStatus as String,
+  customerName: lookup('getcustomerByIdFromCustomersSapi',item.customerId,10000).firstName,
+  restaurantName: lookup('getRestaurantsByIdFromRestaurantsSapi',item.restaurantId,10000).name,
+  restaurantAddress: do {
+  	var restaurant = lookup('getRestaurantsByIdFromRestaurantsSapi',item.restaurantId,10000)
+  	---
+  	restaurant.address.houseNumber ++ "," ++ 
+  	restaurant.address.street ++ "," ++
+  	restaurant.address.city ++ ","++ restaurant.address.pincode
+  	
+  },
+  orderItems: item.orderItems map (orderItem)->{
+  	  "itemName": lookup("getmenuItemByMenuItemId",orderItem,10000).itemName,
+      "quantity": orderItem.quantity,
+      "price": orderItem.orderItemPrice
+  }
+	
+}
+
+
+---
+mapOrder(payload)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
