@@ -1,3 +1,6 @@
+http:
+  port: "8084"
+
 customer:
   sapi:
     host: "localhost"
