@@ -22,6 +22,7 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 	menuItemId: payload.menuItemId
 }]]]></http:uri-params>
 		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="2827c61d-8f54-4389-b706-6f7e745fb6a8" />
 	</flow>
 	<flow name="getcustomerByIdFromCustomersSapi" doc:id="45f2f1c7-5ccf-4a90-98da-f196d66cdd83" >
 		<ee:cache doc:name="CustomerCache" doc:id="83b6ee16-7ff7-4e55-ad90-9ea10d299ab4" cachingStrategy-ref="customerstrategy">
