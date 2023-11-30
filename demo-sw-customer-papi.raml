@@ -1,2 +1,27 @@
 #%RAML 1.0
 title: Demo-sw-customer-papi
+mediaType: 
+- application/json
+types:
+ customers: !include /dataTypes/customers.raml
+/customers:
+ get:
+  responses:
+   200:
+    body:
+     type: customers
+ 
+ /{customerId}:
+  get:
+   responses:
+     200:  
+      body:
+       type: customers      
+     404:
+     500:  
+    
+   
+    
+      
+           
+     
