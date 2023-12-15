@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="81d81314-239a-4eab-af57-c1a17b455050" basePath="/api">
+		<http:request-connection host="${http.host}" port="${http.port}" />
+	</http:request-config>
+	<flow name="getallcustomersFlow" doc:id="ebae9c61-f3a9-43e1-9da6-885e870c6ec7" >
+		<http:request method="GET" doc:name="Getallcustomers" doc:id="2aed7342-59ec-4423-81a4-a1dff430410c" config-ref="HTTP_Request_configuration" path="/customers"/>
+		<ee:transform doc:name="Transform Message" doc:id="10165980-bcc2-4883-b666-0b0c6685dd13" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+fun mapAddress(addresses)= addresses map(addresses) ->
+  	addresses.houseNumber ++ ',' ++ addresses.street ++ ',' ++ addresses.city ++ ',' ++
+  	addresses.pincode ++ ',' ++ addresses.addressType ++ ',' ++ addresses.addressId
+fun mapCustomer (customer) = {
+	
+  customerId: customer.customerId,
+  fullName: customer.firstName ++ customer.lastName,
+  email: customer.email,
+  phone: customer.phone,
+  addresses: mapAddress(customer.addresses)
+  }
+    	
+---
+payload map (item)-> mapCustomer(item)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getallcustomersbyId" doc:id="dd173332-1bdb-4b30-88ad-383b6fdd7512" >
+		<http:request method="GET" doc:name="Get allcustomersbyId" doc:id="0e3ab2eb-d620-46a4-b9f1-81a7c73bf183" config-ref="HTTP_Request_configuration" path="/customers/{id}"/>
+		<ee:transform doc:name="Transform Message" doc:id="ee1b2186-661e-4288-adaa-b0ab91c188c3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+fun mapAddress(addresses)= addresses map(addresses) ->
+  	addresses.houseNumber ++ ',' ++ addresses.street ++ ',' ++ addresses.city ++ ',' ++
+  	addresses.pincode ++ ',' ++ addresses.addressType ++ ',' ++ addresses.addressId
+fun mapCustomer (customer) = {
+	
+  customerId: customer.customerId,
+  fullName: customer.firstName ++ customer.lastName,
+  email: customer.email,
+  phone: customer.phone,
+  addresses: mapAddress(customer.addresses)
+  }
+---
+mapCustomer(payload)    	]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
