@@ -5,6 +5,9 @@ mediaType:
 types:
  customers: !include /dataTypes/customers.raml
  ErrorMessage: !include /dataTypes/ErrorMessage.raml
+ order: !include /dataTypes/order.raml
+ orderItems: !include /dataTypes/orderItems.raml
+ 
 /customers:
  get:
   responses:
@@ -30,17 +33,17 @@ types:
       body:
        type: ErrorMessage
   /{orderId}:  
-      get:
-   responses:
-     200:  
-      body: order      
-     404:
-      body:
-       type: ErrorMessage 
-     500: 
-      body:
-       type: ErrorMessage
+    get:
+     responses:
+       200:  
+        body: order      
+       404:
+        body:
+         type: ErrorMessage 
+       500: 
+        body:
+         type: ErrorMessage
     
       
            
-     
+ 
